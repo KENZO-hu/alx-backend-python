@@ -1,26 +1,56 @@
-import asyncio 
+import asyncio
 import aiosqlite
 
-DB_NAME = 'user_data.csv'
-
 async def async_fetch_users():
-    async with aiosqlite.Connect(DB_NAME) as db :
-        async with db.execute("SELECT * FROM users ") as cursor:
-            rows = await cursor.fetchall()
-            print("\n all users:")
-            for row in rows :
-                print(row)
-async def aync_fetch_old_users():
-    async with aiosqlite.connect(DB_NAME) as db :
-        async with db.execute("SELECT * FROM users WHERE age > 40") as cursor :
-            rows = await cursor.fetchall()
-            print("\n users older than 40 :")
-            for row in rows : 
-                print(row)               
+    """
+    Asynchronously fetch all users from the database.
+    
+    Returns:
+        list: All users from the users table
+    """
+    async with aiosqlite.connect('users.db') as db:
+        cursor = await db.execute("SELECT * FROM users")
+        results = await cursor.fetchall()
+        return results
+
+async def async_fetch_older_users():
+    """
+    Asynchronously fetch users older than 40 from the database.
+    
+    Returns:
+        list: Users older than 40 from the users table
+    """
+    async with aiosqlite.connect('users.db') as db:
+        cursor = await db.execute("SELECT * FROM users WHERE age > ?", (40,))
+        results = await cursor.fetchall()
+        return results
+
 async def fetch_concurrently():
-    await asyncio.gather(
+    """
+    Execute both async_fetch_users and async_fetch_older_users concurrently
+    using asyncio.gather().
+    
+    Returns:
+        tuple: Results from both queries
+    """
+    # Use asyncio.gather to run both queries concurrently
+    all_users, older_users = await asyncio.gather(
         async_fetch_users(),
         async_fetch_older_users()
     )
-if __name__ == '__main__':
-    asyncio.run(fetch_concurrently)
+    
+    # Print results
+    print("All users:")
+    for user in all_users:
+        print(user)
+    
+    print("\nUsers older than 40:")
+    for user in older_users:
+        print(user)
+    
+    return all_users, older_users
+
+# Run the concurrent fetch
+if __name__ == "__main__":
+    # Use asyncio.run to execute the concurrent fetch
+    asyncio.run(fetch_concurrently())
