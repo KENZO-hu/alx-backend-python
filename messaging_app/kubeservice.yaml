@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: messaging-app-svc
+  labels:
+    app: messaging-app
+spec:
+  selector:
+    app: messaging-app
+    color: blue
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
+      name: http
+  type: ClusterIP

@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+NAMESPACE="${1:-default}"
+DEPLOYMENT="messaging-app"     # if you used messaging-app (single deployment) earlier.
+
+# If you renamed to messaging-app-blue, set DEPLOYMENT accordingly:
+if kubectl get deployment messaging-app -n $NAMESPACE >/dev/null 2>&1; then
+  DEPLOYMENT="messaging-app"
+elif kubectl get deployment messaging-app-blue -n $NAMESPACE >/dev/null 2>&1; then
+  DEPLOYMENT="messaging-app-blue"
+fi
+
+IMAGE="${1:-}"
+# Instead of positional, use environment variable or edit below:
+NEW_IMAGE="${NEW_IMAGE:-YOUR_DOCKER_IMAGE:2.0}"
+
+echo "==> Triggering rolling update on deployment: $DEPLOYMENT in namespace $NAMESPACE"
+echo "==> New image: $NEW_IMAGE"
+
+kubectl set image deployment/$DEPLOYMENT -n $NAMESPACE "*=$NEW_IMAGE" --record
+
+echo "==> Monitoring rollout status..."
+kubectl rollout status deployment/$DEPLOYMENT -n $NAMESPACE --timeout=180s
+
+echo
+echo "==> Current pods:"
+kubectl get pods -l app=messaging-app -n $NAMESPACE -o wide
+
+echo
+echo "==> Quick uptime test via curl (continuous):"
+echo "You can run the following in another terminal to continuously send requests:"
+echo "  while true; do curl -sS -o /dev/null -w \"%{http_code} %{time_total}\\n\" http://$(minikube ip):8000/ || true; sleep 0.5; done"
+echo
+echo "==> Rolling update complete (check logs if needed):"
+kubectl logs -l app=messaging-app -n $NAMESPACE --tail=100 || true

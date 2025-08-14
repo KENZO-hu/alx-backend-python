@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+NAMESPACE="${1:-default}"
+
+echo "==> Apply blue deployment and service (initial traffic to blue)..."
+kubectl apply -f messaging_app/blue_deployment.yaml -n $NAMESPACE
+kubectl apply -f messaging_app/kubeservice.yaml -n $NAMESPACE
+
+echo "==> Apply green deployment (staged, not receiving traffic yet)..."
+kubectl apply -f messaging_app/green_deployment.yaml -n $NAMESPACE
+
+echo
+echo "==> Status (deployments & pods):"
+kubectl get deployments -l app=messaging-app -n $NAMESPACE
+kubectl get pods -l app=messaging-app -n $NAMESPACE -o wide
+
+echo
+echo "==> Tail logs for green deployment (to check for errors):"
+kubectl logs -l app=messaging-app,color=green -n $NAMESPACE --tail=100 || true
+
+echo
+echo "==> To switch traffic from blue -> green, run:"
+echo "  kubectl patch service messaging-app-svc -n $NAMESPACE -p '{\"spec\":{\"selector\":{\"app\":\"messaging-app\",\"color\":\"green\"}}}'"
+echo
+echo "After patching service, verify:"
+echo "  kubectl get endpoints messaging-app-svc -n $NAMESPACE -o yaml"
+echo "  kubectl get pods -l app=messaging-app,color=green -n $NAMESPACE"
