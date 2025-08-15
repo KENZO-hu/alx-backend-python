@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DEPLOYMENT_NAME="messaging-app"
+NAMESPACE="${1:-default}"
+
+echo "==> Scaling $DEPLOYMENT_NAME to 3 replicas..."
+kubectl scale deployment/$DEPLOYMENT_NAME --replicas=3 -n $NAMESPACE
+
+echo
+echo "==> Waiting for pods to be ready..."
+kubectl rollout status deployment/$DEPLOYMENT_NAME -n $NAMESPACE --timeout=120s
+
+echo
+echo "==> Pods:"
+kubectl get pods -l app=messaging-app -n $NAMESPACE -o wide
+
+echo
+echo "==> Resource usage (requires metrics-server installed):"
+if kubectl top pods >/dev/null 2>&1; then
+  kubectl top pods -l app=messaging-app -n $NAMESPACE
+else
+  echo "kubectl top not available. Install metrics-server to use 'kubectl top'."
+fi
+
+echo
+echo "==> Load testing (wrk) note:"
+echo "If you have wrk installed, run something like:"
+echo "  kubectl port-forward svc/messaging-app-svc 8000:8000 &"
+echo "  wrk -t2 -c50 -d30s http://127.0.0.1:8000/"
+echo
+echo "Done."
